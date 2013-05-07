@@ -3,3 +3,8 @@ deps
 *.o
 *.beam
 *.plt
+*.swp
+ebin
+rel/send_file
+rel/files/app.config
+*.dump
