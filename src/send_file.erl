@@ -37,7 +37,9 @@ send_file(Filepath, Uuid) ->
         {ok, ExistingSize} ->
     %{ok, ExistingSize} = binary_to_term(Packet),
             io:format("ExistingSize = ~p~n", [ExistingSize]),
-            {ok, BytesSent} = file:sendfile(Filepath, Socket),
+            {ok, Fd} = file:open(Filepath, [raw, binary, read]),
+            {ok, BytesSent} = file:sendfile(Fd, Socket, ExistingSize, 0, []),
+            file:close(Fd),
             RV = {ok, BytesSent, FileSize}
     end,
     gen_tcp:close(Socket),
