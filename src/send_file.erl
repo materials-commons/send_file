@@ -32,11 +32,16 @@ send_file(Filepath, Uuid) ->
     %gen_tcp:send(Socket, Basename),
     gen_tcp:send(Socket, BinTerm),
     {ok, Packet} = gen_tcp:recv(Socket, 0),
-    {ok, ExistingSize} = binary_to_term(Packet),
-    io:format("ExistingSize = ~p~n", [ExistingSize]),
-    {ok, BytesSent} = file:sendfile(Filepath, Socket),
+    case binary_to_term(Packet) of
+        already_downloaded -> RV = {ok, 0, FileSize};
+        {ok, ExistingSize} ->
+    %{ok, ExistingSize} = binary_to_term(Packet),
+            io:format("ExistingSize = ~p~n", [ExistingSize]),
+            {ok, BytesSent} = file:sendfile(Filepath, Socket),
+            RV = {ok, BytesSent, FileSize}
+    end,
     gen_tcp:close(Socket),
-    {ok, BytesSent, FileSize}.
+    RV.
 
 checksum(Filepath) ->
     checksum_rv(checksums:md5sum(Filepath)).
