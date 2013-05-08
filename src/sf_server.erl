@@ -40,9 +40,7 @@
 %%% API
 %%%===================================================================
 
-%%--------------------------------------------------------------------
 %% @doc Starts the server
-%%--------------------------------------------------------------------
 -spec start_link(port()) -> {ok, pid()} | ignore | {error, string()}.
 start_link(LSocket) ->
     gen_server:start_link(?MODULE, [LSocket], []).
@@ -51,34 +49,18 @@ start_link(LSocket) ->
 %%% gen_server callbacks
 %%%===================================================================
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc Initialize state. Most setup work is done in handle_info
-%%      timeout.
-%%--------------------------------------------------------------------
+
+%% @doc Initialize state. Most setup work is done in handle_info timeout.
 init([LSocket]) ->
     {ok, #state{lsocket = LSocket, fd = not_set}, 0}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%--------------------------------------------------------------------
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%--------------------------------------------------------------------
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%--------------------------------------------------------------------
-%handle_info({tcp, Socket, Filename}, State) when State#state.fd =:= not_set ->
 handle_info({tcp, Socket, Request}, State) when State#state.fd =:= not_set ->
     {ok, Filename, Destination, Size, Checksum} = splitout_request_data(Request),
     Filepath = construct_file_path(Destination, Filename),
@@ -104,20 +86,14 @@ handle_info({tcp_closed, _Socket}, State) ->
 handle_info(_Info, State) ->
     {noreply, State}.
 
-%%--------------------------------------------------------------------
 %% @private
-%% @doc
-%%--------------------------------------------------------------------
+%% @doc If a file was opened then close it before terminating.
 terminate(_Reason, #state{fd = Fd}) when Fd =:= not_set ->
     ok;
 terminate(_Reason, #state{fd = Fd}) ->
     file:close(Fd),
     ok.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
