@@ -141,4 +141,7 @@ splitout_request_data(RequestData) ->
 
 construct_file_path({uuid, Uuid}, Filename) ->
     filename:join(["/tmp/t", Uuid ++ "_" ++ Filename]);
-construct_file_path({destination, Filepath}, _Filename) -> Filepath.
+construct_file_path({destination, Filepath}, _Filename) ->
+    Filepath;
+construct_file_path({directory, Directory}, Filename) ->
+    filename:join([Directory, Filename]).

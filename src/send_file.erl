@@ -34,11 +34,16 @@
 
 %% @doc send file to server returns {ok, BytesSent, FileSize}
 -spec send_file(string(), integer(), string(),
-        {destination, string()} | {uuid, string()}) -> {ok, integer(), integer()}.
-send_file(Host, Port, Filepath, {destination, DestinationFilepath}) ->
-    do_send_file(Host, Port, Filepath, {destination, DestinationFilepath});
-send_file(Host, Port, Filepath, {uuid, Uuid}) ->
-    do_send_file(Host, Port, Filepath, {uuid, Uuid}).
+        {destination, string()} | {uuid, string()} | {directory, string()})
+        -> {ok, integer(), integer()}.
+
+send_file(Host, Port, Filepath,
+            {destination, _DestinationFilepath} = Destination) ->
+    do_send_file(Host, Port, Filepath, Destination);
+send_file(Host, Port, Filepath, {uuid, _Uuid} = Destination) ->
+    do_send_file(Host, Port, Filepath, Destination);
+send_file(Host, Port, Filepath, {directory, _Directory} = Destination) ->
+    do_send_file(Host, Port, Filepath, Destination).
 
 %%%===================================================================
 %%% Local functions
