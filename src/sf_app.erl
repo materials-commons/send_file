@@ -34,7 +34,8 @@
 
 start(_StartType, _StartArgs) ->
     Port = get_port(),
-    {ok, LSocket} = gen_tcp:listen(Port, [binary, {packet, raw}, {active, true}, {reuseaddr, true}]),
+    {ok, LSocket} = gen_tcp:listen(Port, [binary, {packet, raw},
+                        {active, true}, {reuseaddr, true}]),
     case sf_sup:start_link(LSocket) of
         {ok, Pid} ->
             sf_sup:start_child(),
