@@ -70,7 +70,7 @@ handle_info({tcp, Socket, Request}, State) when State#state.fd =:= not_set ->
             send_already_downloaded(Socket),
             RV = {stop, normal, State};
         false ->
-            NewState = prepare_download(Filepath, DownloadedSize, State, Socket),
+            NewState = proceed_with_download(Filepath, DownloadedSize, State, Socket),
             RV = {noreply, NewState}
     end,
     RV;
@@ -104,7 +104,7 @@ code_change(_OldVsn, State, _Extra) ->
 send_already_downloaded(Socket) ->
     gen_tcp:send(Socket, term_to_binary(already_downloaded)).
 
-prepare_download(Filepath, FileSize, State, Socket) ->
+proceed_with_download(Filepath, FileSize, State, Socket) ->
     {ok, Fd} = open_file(Filepath, FileSize),
     gen_tcp:send(Socket, term_to_binary({ok, FileSize})),
     State#state{fd = Fd}.
