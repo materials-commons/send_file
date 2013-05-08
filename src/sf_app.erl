@@ -52,7 +52,7 @@ stop(_State) ->
 %%%===================================================================
 
 get_port() ->
-    case application:get_env(sf, port) of
+    case application:get_env(send_file, port) of
         {ok, Port} ->
             Port;
         undefined ->
