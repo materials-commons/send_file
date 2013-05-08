@@ -80,8 +80,8 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 %handle_info({tcp, Socket, Filename}, State) when State#state.fd =:= not_set ->
 handle_info({tcp, Socket, Request}, State) when State#state.fd =:= not_set ->
-    {ok, Filename, Uuid, Size, Checksum} = splitout_request_data(Request),
-    Filepath = construct_file_path(Uuid, Filename),
+    {ok, Filename, Destination, Size, Checksum} = splitout_request_data(Request),
+    Filepath = construct_file_path(Destination, Filename),
     DownloadedSize = get_file_size(Filepath),
     case size_and_checksum_match(Filepath, Size, DownloadedSize, Checksum) of
         true ->
@@ -163,9 +163,9 @@ get_file_size(Filename) ->
 splitout_request_data(RequestData) ->
     Term = binary_to_term(RequestData),
     io:format("splitout_request = ~p~n", [Term]),
-    [{_, Filename}, {_, Uuid}, {_, Size}, {_, Checksum}] = binary_to_term(RequestData),
-    {ok, Filename, Uuid, Size, Checksum}.
+    [{_, Filename}, Destination, {_, Size}, {_, Checksum}] = binary_to_term(RequestData),
+    {ok, Filename, Destination, Size, Checksum}.
 
-construct_file_path(Uuid, Filename) ->
-    filename:join(["/tmp/t", Uuid ++ "_" ++ Filename]).
-    %filename:join(["/tmp", Uuid, Filename]).
+construct_file_path({uuid, Uuid}, Filename) ->
+    filename:join(["/tmp/t", Uuid ++ "_" ++ Filename]);
+construct_file_path({destination, Filepath}, _Filename) -> Filepath.

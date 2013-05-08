@@ -24,24 +24,30 @@
 -include_lib("kernel/include/file.hrl").
 
 %% API
--export([send_file/2]).
-
-%% Macros
--define(DEFAULT_PORT, 1055).
+-export([send_file/4]).
 
 
 %%%===================================================================
 %%% API
 %%%===================================================================
 
+
+%% @doc send file to server returns {ok, BytesSent, FileSize}
+-spec send_file(string(), integer(), string(),
+        {destination, string()} | {uuid, string()}) -> {ok, integer(), integer()}.
+send_file(Host, Port, Filepath, {destination, DestinationFilepath}) ->
+    do_send_file(Host, Port, Filepath, {destination, DestinationFilepath});
+send_file(Host, Port, Filepath, {uuid, Uuid}) ->
+    do_send_file(Host, Port, Filepath, {uuid, Uuid}).
+
 %% @doc Sends a file to the server. Handles previous partial attempts.
-send_file(Filepath, Uuid) ->
+do_send_file(Host, Port, Filepath, Destination) ->
     {ok, #file_info{size = FileSize}} = file:read_file_info(Filepath),
     {ok, Checksum} = checksum(Filepath),
-    {ok, Socket} = gen_tcp:connect("127.0.0.1", ?DEFAULT_PORT,
+    {ok, Socket} = gen_tcp:connect(Host, Port,
                         [binary, {packet, raw}, {active, false}]),
     Basename = filename:basename(Filepath),
-    BinTerm = term_to_binary([{filename, Basename}, {uuid, Uuid},
+    BinTerm = term_to_binary([{filename, Basename}, Destination,
                     {size, FileSize}, {checksum, Checksum}]),
     gen_tcp:send(Socket, BinTerm),
     {ok, Packet} = gen_tcp:recv(Socket, 0),
@@ -55,6 +61,8 @@ send_file(Filepath, Uuid) ->
     end,
     gen_tcp:close(Socket),
     RV.
+
+
 
 %%%===================================================================
 %%% Local functions
