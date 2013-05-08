@@ -102,10 +102,22 @@ handle_info({tcp, Socket, Request}, State) when State#state.fd =:= not_set ->
     %RequestBin = list_to_binary(Request),
     %io:format("RequestBin =")
     {ok, Filename, Uuid, Size, Checksum} = splitout_request_data(Request),
-    Filepath = filename:join(?BASE_PATH, Filename),
-    {ok, Fd} = file:open(Filepath, [raw, binary, write]),
-    gen_tcp:send(Socket, term_to_binary({ok, 23})),
-    {noreply, State#state{fd = Fd}};
+    Filepath = construct_file_path(Uuid, Filename),
+    DownloadedSize = get_file_size(Filepath),
+    case size_and_checksum_match(Filepath, Size, DownloadedSize, Checksum) of
+        true ->
+            io:format("Already downloaded~n"),
+            send_already_downloaded(Socket),
+            RV = {stop, normal, State};
+        false ->
+            NewState = prepare_download(Filepath, DownloadedSize, State, Socket),
+            io:format("Will download~n"),
+            RV = {noreply, NewState}
+    end,
+    RV;
+    %gen_tcp:send(Socket, term_to_binary({ok, DownloadedSize})),
+    %{ok, Fd} = file:open(Filepath, [raw, binary, write]),
+    %{noreply, State#state{fd = Fd}};
 handle_info({tcp, _Socket, RawData}, #state{fd = Fd} = State) ->
     ok = file:write(Fd, RawData),
     {noreply, State};
@@ -151,7 +163,7 @@ code_change(_OldVsn, State, _Extra) ->
 send_already_downloaded(Socket) ->
     gen_tcp:send(Socket, term_to_binary(already_downloaded)).
 
-prepare_download(Filepath, FileSize, #state{lsocket = Socket} = State) ->
+prepare_download(Filepath, FileSize, State, Socket) ->
     {ok, Fd} = open_file(Filepath, FileSize),
     io:format("~p Sending {ok, FileSize} on socket as ~p~n", [self(), term_to_binary({ok, FileSize})]),
     gen_tcp:send(Socket, term_to_binary({ok, FileSize})),
@@ -190,5 +202,5 @@ splitout_request_data(RequestData) ->
     {ok, Filename, Uuid, Size, Checksum}.
 
 construct_file_path(Uuid, Filename) ->
-    filename:join(["/tmp", Filename]).
+    filename:join(["/tmp/t", Uuid ++ "_" ++ Filename]).
     %filename:join(["/tmp", Uuid, Filename]).
