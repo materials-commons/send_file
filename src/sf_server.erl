@@ -107,7 +107,7 @@ handle_info(_Info, State) ->
 %%--------------------------------------------------------------------
 terminate(_Reason, #state{fd = Fd}) when Fd =:= not_set ->
     ok;
-terminate (_Reason, #state{fd = Fd})
+terminate(_Reason, #state{fd = Fd}) ->
     file:close(Fd),
     ok.
 
