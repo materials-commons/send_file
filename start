@@ -1,6 +1,6 @@
 #!/bin/sh
 #erl -config rel/files/app -pa ebin -pa deps/handyman/ebin 
 #erl -config rel/files/app -pa ebin -pa deps/handyman/ebin
-#erl -config rel/send_file/etc/app -pa ebin -pa deps/handyman/ebin  -eval "application:start(sf)."
-erl -pa ebin
+erl -config rel/send_file/etc/app -pa ebin -pa deps/handyman/ebin  -eval "application:start(sf)."
+#erl -pa ebin
 
