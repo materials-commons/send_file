@@ -1,11 +1,23 @@
-%%%-------------------------------------------------------------------
-%%% @author V. Glenn Tarcea <glenn.tarcea@gmail.com>
-%%% @copyright (C) 2012, V. Glenn Tarcea
-%%% @doc
+%%% ===================================================================
+%%% @author V. Glenn Tarcea <gtarcea@umich.edu>
 %%%
-%%% @end
-%%% Created : 12 Nov 2012 by V. Glenn Tarcea <glenn.tarcea@gmail.com>
-%%%-------------------------------------------------------------------
+%%% @doc The server for accepting and writing file transfers.
+%%%
+%%% @copyright Copyright (c) 2013, Regents of the University of Michigan.
+%%% All rights reserved.
+%%%
+%%% Permission to use, copy, modify, and/or distribute this software for any
+%%% purpose with or without fee is hereby granted, provided that the above
+%%% copyright notice and this permission notice appear in all copies.
+%%%
+%%% THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+%%% WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+%%% MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+%%% ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+%%% WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+%%% ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+%%% OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+%%% ===================================================================
 -module(sf_server).
 
 -behaviour(gen_server).
@@ -29,12 +41,9 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
+-spec start_link(port()) -> {ok, pid()} | ignore | {error, string()}.
 start_link(LSocket) ->
     gen_server:start_link(?MODULE, [LSocket], []).
 
@@ -44,7 +53,8 @@ start_link(LSocket) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
+%% @doc Initialize state. Most setup work is done in handle_info
+%%      timeout.
 %%--------------------------------------------------------------------
 init([LSocket]) ->
     {ok, #state{lsocket = LSocket, fd = not_set}, 0}.
@@ -70,25 +80,18 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 %handle_info({tcp, Socket, Filename}, State) when State#state.fd =:= not_set ->
 handle_info({tcp, Socket, Request}, State) when State#state.fd =:= not_set ->
-    %RequestBin = list_to_binary(Request),
-    %io:format("RequestBin =")
     {ok, Filename, Uuid, Size, Checksum} = splitout_request_data(Request),
     Filepath = construct_file_path(Uuid, Filename),
     DownloadedSize = get_file_size(Filepath),
     case size_and_checksum_match(Filepath, Size, DownloadedSize, Checksum) of
         true ->
-            io:format("Already downloaded~n"),
             send_already_downloaded(Socket),
             RV = {stop, normal, State};
         false ->
             NewState = prepare_download(Filepath, DownloadedSize, State, Socket),
-            io:format("Will download~n"),
             RV = {noreply, NewState}
     end,
     RV;
-    %gen_tcp:send(Socket, term_to_binary({ok, DownloadedSize})),
-    %{ok, Fd} = file:open(Filepath, [raw, binary, write]),
-    %{noreply, State#state{fd = Fd}};
 handle_info({tcp, _Socket, RawData}, #state{fd = Fd} = State) ->
     ok = file:write(Fd, RawData),
     {noreply, State};

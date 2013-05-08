@@ -1,11 +1,23 @@
-%%%-------------------------------------------------------------------
-%%% @author V. Glenn Tarcea <glenn.tarcea@gmail.com>
-%%% @copyright (C) 2012, V. Glenn Tarcea
-%%% @doc
+%%% ===================================================================
+%%% @author V. Glenn Tarcea <gtarcea@umich.edu>
 %%%
-%%% @end
-%%% Created : 12 Nov 2012 by V. Glenn Tarcea <glenn.tarcea@gmail.com>
-%%%-------------------------------------------------------------------
+%%% @doc The supervisor for sf_server.
+%%%
+%%% @copyright Copyright (c) 2013, Regents of the University of Michigan.
+%%% All rights reserved.
+%%%
+%%% Permission to use, copy, modify, and/or distribute this software for any
+%%% purpose with or without fee is hereby granted, provided that the above
+%%% copyright notice and this permission notice appear in all copies.
+%%%
+%%% THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+%%% WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+%%% MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+%%% ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+%%% WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+%%% ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+%%% OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+%%% ===================================================================
 -module(sf_sup).
 
 -behaviour(supervisor).
@@ -16,22 +28,19 @@
 %% Supervisor callbacks
 -export([init/1]).
 
+-define(CHILD(I, Args), {I, {I, start_link, Args}, temporary, brutal_kill, worker, [I]}).
+
 -define(SERVER, ?MODULE).
 
 %%%===================================================================
 %%% API functions
 %%%===================================================================
 
-%%--------------------------------------------------------------------
-%% @doc
-%% Starts the supervisor
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
-%%--------------------------------------------------------------------
+%% @doc Starts the supervisor
 start_link(LSocket) ->
     supervisor:start_link({local, ?SERVER}, ?MODULE, [LSocket]).
 
+%% @doc start a new child.
 start_child() ->
     supervisor:start_child(?SERVER, []).
 
@@ -39,35 +48,9 @@ start_child() ->
 %%% Supervisor callbacks
 %%%===================================================================
 
-%%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Whenever a supervisor is started using supervisor:start_link/[2,3],
-%% this function is called by the new process to find out about
-%% restart strategy, maximum restart frequency and child
-%% specifications.
-%%
-%% @spec init(Args) -> {ok, {SupFlags, [ChildSpec]}} |
-%%                     ignore |
-%%                     {error, Reason}
-%% @end
-%%--------------------------------------------------------------------
+%% @doc Initialize supervisor
 init([LSocket]) ->
-    RestartStrategy = simple_one_for_one,
-    MaxRestarts = 0,
-    MaxSecondsBetweenRestarts = 1,
+    SfServer = ?CHILD(sf_server, [LSocket]),
+    {ok, { {simple_one_for_one, 0, 1}, [SfServer] } }.
 
-    SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
-
-    Restart = temporary,
-    Shutdown = brutal_kill,
-    Type = worker,
-
-    AChild = {sf_server, {sf_server, start_link, [LSocket]},
-              Restart, Shutdown, Type, [sf_server]},
-
-    {ok, {SupFlags, [AChild]}}.
-
-%%%===================================================================
-%%% Internal functions
-%%%===================================================================

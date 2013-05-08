@@ -1,11 +1,24 @@
-%%%-------------------------------------------------------------------
-%%% @author V. Glenn Tarcea <glenn.tarcea@gmail.com>
-%%% @copyright (C) 2012, V. Glenn Tarcea
-%%% @doc
+%%% ===================================================================
+%%% @author V. Glenn Tarcea <gtarcea@umich.edu>
 %%%
-%%% @end
-%%% Created : 12 Nov 2012 by V. Glenn Tarcea <glenn.tarcea@gmail.com>
-%%%-------------------------------------------------------------------
+%%% @doc The supervisor for sf_server.
+%%%
+%%% @copyright Copyright (c) 2013, Regents of the University of Michigan.
+%%% All rights reserved.
+%%%
+%%% Permission to use, copy, modify, and/or distribute this software for any
+%%% purpose with or without fee is hereby granted, provided that the above
+%%% copyright notice and this permission notice appear in all copies.
+%%%
+%%% THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+%%% WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+%%% MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+%%% ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+%%% WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+%%% ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+%%% OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+%%% ===================================================================
+
 -module(sf_app).
 
 -behaviour(application).
@@ -19,22 +32,6 @@
 %%% Application callbacks
 %%%===================================================================
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function is called whenever an application is started using
-%% application:start/[1,2], and should start the processes of the
-%% application. If the application is structured according to the OTP
-%% design principles as a supervision tree, this means starting the
-%% top supervisor of the tree.
-%%
-%% @spec start(StartType, StartArgs) -> {ok, Pid} |
-%%                                      {ok, Pid, State} |
-%%                                      {error, Reason}
-%%      StartType = normal | {takeover, Node} | {failover, Node}
-%%      StartArgs = term()
-%% @end
-%%--------------------------------------------------------------------
 start(_StartType, _StartArgs) ->
     Port = get_port(),
     {ok, LSocket} = gen_tcp:listen(Port, [binary, {packet, raw}, {active, true}, {reuseaddr, true}]),
@@ -46,6 +43,13 @@ start(_StartType, _StartArgs) ->
             {error, Error}
     end.
 
+stop(_State) ->
+    ok.
+
+%%%===================================================================
+%%% Local functions
+%%%===================================================================
+
 get_port() ->
     case application:get_env(sf, port) of
         {ok, Port} ->
@@ -53,17 +57,4 @@ get_port() ->
         undefined ->
             ?DEFAULT_PORT
     end.
-    
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function is called whenever an application has stopped. It
-%% is intended to be the opposite of Module:start/2 and should do
-%% any necessary cleaning up. The return value is ignored.
-%%
-%% @spec stop(State) -> void()
-%% @end
-%%--------------------------------------------------------------------
-stop(_State) ->
-    ok.
 
