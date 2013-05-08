@@ -40,33 +40,47 @@ send_file(Host, Port, Filepath, {destination, DestinationFilepath}) ->
 send_file(Host, Port, Filepath, {uuid, Uuid}) ->
     do_send_file(Host, Port, Filepath, {uuid, Uuid}).
 
-%% @doc Sends a file to the server. Handles previous partial attempts.
+%%%===================================================================
+%%% Local functions
+%%%===================================================================
+
+%% Sends a file to the server. Handles previous partial attempts.
 do_send_file(Host, Port, Filepath, Destination) ->
+    {ok, FileSize, Checksum, Basename} = get_file_attributes(Filepath),
+    ServerMessage = construct_message_to_server(Basename, Checksum, Destination, FileSize),
+    communicate_with_server(Host, Port, ServerMessage, Filepath, FileSize).
+
+%% Get the attributes we need, including computed attributes such as checksum
+get_file_attributes(Filepath) ->
     {ok, #file_info{size = FileSize}} = file:read_file_info(Filepath),
     {ok, Checksum} = checksum(Filepath),
+    Basename = filename:basename(Filepath),
+    {ok, FileSize, Checksum, Basename}.
+
+%% @doc Create message to server
+construct_message_to_server(Basename, Checksum, Destination, FileSize) ->
+    [{filename, Basename}, Destination, {size, FileSize}, {checksum, Checksum}].
+
+%% Open socket to server and send/receive messages.
+communicate_with_server(Host, Port, ServerMessage, Filepath, FileSize) ->
     {ok, Socket} = gen_tcp:connect(Host, Port,
                         [binary, {packet, raw}, {active, false}]),
-    Basename = filename:basename(Filepath),
-    BinTerm = term_to_binary([{filename, Basename}, Destination,
-                    {size, FileSize}, {checksum, Checksum}]),
-    gen_tcp:send(Socket, BinTerm),
+    gen_tcp:send(Socket, term_to_binary(ServerMessage)),
     {ok, Packet} = gen_tcp:recv(Socket, 0),
-    case binary_to_term(Packet) of
-        already_downloaded -> RV = {ok, 0, FileSize};
+    RV = handle_response_packet(Packet, Socket, Filepath, FileSize),
+    gen_tcp:close(Socket),
+    RV.
+
+%% @doc Handle response and perform appropriate action
+handle_response_packet(Packet, Socket, Filepath, FileSize) ->
+   case binary_to_term(Packet) of
+        already_downloaded -> {ok, 0, FileSize};
         {ok, ExistingSize} ->
             {ok, Fd} = file:open(Filepath, [raw, binary, read]),
             {ok, BytesSent} = file:sendfile(Fd, Socket, ExistingSize, 0, []),
             file:close(Fd),
-            RV = {ok, BytesSent, FileSize}
-    end,
-    gen_tcp:close(Socket),
-    RV.
-
-
-
-%%%===================================================================
-%%% Local functions
-%%%===================================================================
+            {ok, BytesSent, FileSize}
+    end.
 
 %% Compute checksum
 checksum(Filepath) ->
