@@ -159,8 +159,8 @@ get_file_size(Filename) ->
     end.
 
 splitout_request_data(RequestData) ->
-    Term = binary_to_term(RequestData),
-    [{_, Filename}, Destination, {_, Size}, {_, Checksum}] = binary_to_term(RequestData),
+    [{_, Filename}, Destination, {_, Size}, {_, Checksum}] =
+            binary_to_term(RequestData),
     {ok, Filename, Destination, Size, Checksum}.
 
 construct_file_path({uuid, Uuid}, Filename) ->
