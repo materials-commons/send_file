@@ -130,9 +130,7 @@ send_already_downloaded(Socket) ->
 
 prepare_download(Filepath, FileSize, State, Socket) ->
     {ok, Fd} = open_file(Filepath, FileSize),
-    io:format("~p Sending {ok, FileSize} on socket as ~p~n", [self(), term_to_binary({ok, FileSize})]),
     gen_tcp:send(Socket, term_to_binary({ok, FileSize})),
-    io:format("~p Done sending {ok, FileSize}~n", [self()]),
     State#state{fd = Fd}.
 
 size_and_checksum_match(Filepath, Size, DownloadedSize, Checksum) ->
@@ -162,7 +160,6 @@ get_file_size(Filename) ->
 
 splitout_request_data(RequestData) ->
     Term = binary_to_term(RequestData),
-    io:format("splitout_request = ~p~n", [Term]),
     [{_, Filename}, Destination, {_, Size}, {_, Checksum}] = binary_to_term(RequestData),
     {ok, Filename, Destination, Size, Checksum}.
 
