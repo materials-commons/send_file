@@ -5,6 +5,7 @@ deps
 *.plt
 *.swp
 ebin
+bin
 rel/send_file
 rel/files/app.config
 *.dump
