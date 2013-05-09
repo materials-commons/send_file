@@ -25,7 +25,7 @@
 -export([main/1]).
 
 -define(OPTSPEC, [
-            {host, $h, "host", {string, "localhost"},   "Host to send file to."},
+            {host, $h, "host", {string, "localhost"},   "Host to send files to."},
             {port, $p, "port", {integer, 1055},         "Port to connect to."},
             {dir,  $d, "dir",  {string, "/tmp"},        "Directory to put files in."},
             {help, $?, "help", undefined,               "Show usage."}
