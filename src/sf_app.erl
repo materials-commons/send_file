@@ -26,7 +26,20 @@
 %% Application callbacks
 -export([start/2, stop/1]).
 
+%% API
+-export([start/0]).
+
 -define(DEFAULT_PORT, 1055).
+
+%%%===================================================================
+%%% API
+%%%===================================================================
+
+%% @doc Short cut to start application. Handles starting dependencies.
+start() ->
+    application:start(crypto),
+    application:start(handyman),
+    application:start(send_file).
 
 %%%===================================================================
 %%% Application callbacks
