@@ -1,8 +1,0 @@
-{application, sf,
-  [{description, "Server for transfering files"},
-   {vsn, "v0.1"},
-   {modules, [sf_app, send_file, sf_server, sf_sup]},
-   {registered, [sf_sup]},
-   {applications, [kernel, stdlib]},
-   {mod, {sf_app, []}}
-  ]}.
