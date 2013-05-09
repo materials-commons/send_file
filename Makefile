@@ -6,7 +6,7 @@ COMBO_PLT = $(HOME)/.sf_combo_dialyzer_plt
 
 all: deps compile
 
-compile:
+compile: deps
 	./rebar compile
 
 deps:
@@ -15,9 +15,12 @@ deps:
 generate:
 	./rebar generate
 
-rel: rel-config deps compile generate
+cli: compile
+	./rebar escriptize
 
-devrel: devl-rel-config deps compile generate
+rel: rel-config deps compile generate cli
+
+devrel: devl-rel-config deps compile generate cli
 
 rel-config:
 	cp rel/files/app.config.rel rel/files/app.config
