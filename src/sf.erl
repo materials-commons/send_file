@@ -23,44 +23,43 @@
 
 %% API main for script
 -export([main/1]).
-%-mode(compile).
+
+-define(OPTSPEC, [
+            {host, $h, "host", {string, "localhost"},   "Host to send file to."},
+            {port, $p, "port", {integer, 1055},         "Port to connect to."},
+            {dir,  $d, "dir",  {string, "/tmp"},        "Directory to put files in."},
+            {help, $?, "help", undefined,               "Show usage."}
+        ]).
 
 %%%===================================================================
 %%% API
 %%%===================================================================
 main([]) -> usage();
 main(Args) ->
-    {Host, Port, Directory, Files} = parse_args(Args),
+    {Host, Port, Directory, Files} = parse_results(getopt:parse(?OPTSPEC, Args)),
     send_files(Host, Port, Directory, Files).
 
 %%%===================================================================
 %%% Local
 %%%===================================================================
 
+usage({error, {Error, Description}}) ->
+    io:format(standard_error, "~nError: ~p ~p~n~n", [Error, Description]),
+    usage().
+
 usage() ->
-    Usage =
-        "\nsf [options] files\r\n"
-        "Options:\r\n"
-        "\t-h Host,         :: Host to send file to.\n"
-        "\t-p Port,         :: Port to connect to.\n"
-        "\t-d Directory,    :: Directory to put files in.\n",
-    io:format("~s~n", [Usage]),
-    halt(),
-    ok.
+    getopt:usage(?OPTSPEC, "sf", "files"),
+    halt().
 
-parse_args(Args) ->
-    OptsSpec =
-        [
-            {host, $h, "host", {string, "localhost"},   "Host to send file to."},
-            {port, $p, "port", {integer, 1055},         "Port to connect to."},
-            {dir,  $d, "dir",  {string, "/tmp"},        "Directory to put files in."}
-        ],
-    parse_results(getopt:parse(OptsSpec, Args)).
-
-parse_results({error, {Error, Description}}) ->
-    io:format("~nError: ~p ~p~n", [Error, Description]),
-    usage();
+parse_results({error, {_Error, _Description}} = ErrorValue) ->
+    usage(ErrorValue);
 parse_results({ok, {Values, Files}}) ->
+    case lists:member(help, Values) of
+        true -> usage();
+        false -> options(Values, Files)
+    end.
+
+options(Values, Files) ->
     {host, Host} = lists:keyfind(host, 1, Values),
     {port, Port} = lists:keyfind(port, 1, Values),
     {dir, Dir} = lists:keyfind(dir, 1, Values),
