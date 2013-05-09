@@ -64,7 +64,6 @@ parse_results({ok, {Values, Files}}) ->
     {host, Host} = lists:keyfind(host, 1, Values),
     {port, Port} = lists:keyfind(port, 1, Values),
     {dir, Dir} = lists:keyfind(dir, 1, Values),
-    io:format("~p ~p ~p ~p~n", [Host, Port, Dir, Files]),
     {Host, Port, Dir, Files}.
 
 send_files(_Host, _Port, _Directory, []) -> ok;
