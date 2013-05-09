@@ -1,7 +1,7 @@
 %%% ===================================================================
 %%% @author V. Glenn Tarcea <gtarcea@umich.edu>
 %%%
-%%% @doc Command line for send_file.
+%%% @doc Command line utility for send_file.
 %%%
 %%% @copyright Copyright (c) 2013, Regents of the University of Michigan.
 %%% All rights reserved.
@@ -25,7 +25,7 @@
 -export([main/1]).
 
 -define(OPTSPEC, [
-            {host, $h, "host", {string, "localhost"},   "Host to send files to."},
+            {host, $h, "host", {string, "materialscommons.org"},   "Host to send files to."},
             {port, $p, "port", {integer, 1055},         "Port to connect to."},
             {dir,  $d, "dir",  {string, "/tmp"},        "Directory to put files in."},
             {help, $?, "help", undefined,               "Show usage."}
@@ -70,5 +70,3 @@ send_files(Host, Port, Directory, [File|RemainingFiles]) ->
     io:format("Sending file ~s to host ~s:~p directory ~s~n", [File, Host, Port, Directory]),
     send_file:send_file(Host, Port, File, {directory, Directory}),
     send_files(Host, Port, Directory, RemainingFiles).
-
-
