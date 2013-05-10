@@ -61,19 +61,18 @@ handle_call(_Request, _From, State) ->
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
-handle_info({tcp, Socket, Request}, State) when State#state.fd =:= not_set ->
+handle_info({tcp, Socket, Request}, #state{fd = Fd} = State) when Fd =:= not_set ->
     {ok, Filename, Destination, Size, Checksum} = splitout_request_data(Request),
     Filepath = construct_file_path(Destination, Filename),
     DownloadedSize = get_file_size(Filepath),
     case size_and_checksum_match(Filepath, Size, DownloadedSize, Checksum) of
         true ->
             send_already_downloaded(Socket),
-            RV = {stop, normal, State};
+            {stop, normal, State};
         false ->
             NewState = proceed_with_download(Filepath, DownloadedSize, State, Socket),
-            RV = {noreply, NewState}
-    end,
-    RV;
+            {noreply, NewState}
+    end;
 handle_info({tcp, _Socket, RawData}, #state{fd = Fd} = State) ->
     ok = file:write(Fd, RawData),
     {noreply, State};
@@ -109,29 +108,21 @@ proceed_with_download(Filepath, FileSize, State, Socket) ->
     gen_tcp:send(Socket, term_to_binary({ok, FileSize})),
     State#state{fd = Fd}.
 
-size_and_checksum_match(Filepath, Size, DownloadedSize, Checksum) ->
-    case Size =:= DownloadedSize of
-        true ->
-            DownloadedChecksum = checksums:md5sum(Filepath),
-            Checksum =:= DownloadedChecksum;
-        false ->
-            false
-    end.
+size_and_checksum_match(_Filepath, Size, DownloadedSize, _Checksum) when Size =/= DownloadedSize ->
+    false;
+size_and_checksum_match(Filepath, _Size, _DownloadedSize, Checksum) ->
+    DownloadedChecksum = checksums:md5sum(Filepath),
+    Checksum =:= DownloadedChecksum.
 
-open_file(Filepath, FileSize) ->
-    case FileSize of
-        0 ->
-            file:open(Filepath, [raw, binary, write]);
-        _ ->
-            file:open(Filepath, [raw, binary, append])
-    end.
+open_file(Filepath, FileSize) when FileSize =:= 0 ->
+    file:open(Filepath, [raw, binary, write]);
+open_file(Filepath, _FileSize) ->
+    file:open(Filepath, [raw, binary, append]).
 
 get_file_size(Filename) ->
     case file:read_file_info(Filename) of
-        {ok, FileInfo} ->
-            FileInfo#file_info.size;
-        {error, enoent} ->
-            0
+        {ok, #file_info{size = Size}} -> Size;
+        {error, enoent} -> 0
     end.
 
 splitout_request_data(RequestData) ->
