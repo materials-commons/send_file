@@ -36,9 +36,7 @@
 -spec send_file(string(), integer(), string(),
         {destination, string()} | {uuid, string()} | {directory, string()})
         -> {ok, integer(), integer()}.
-
-send_file(Host, Port, Filepath,
-            {destination, _DestinationFilepath} = Destination) ->
+send_file(Host, Port, Filepath, {destination, _To} = Destination) ->
     do_send_file(Host, Port, Filepath, Destination);
 send_file(Host, Port, Filepath, {uuid, _Uuid} = Destination) ->
     do_send_file(Host, Port, Filepath, Destination);
@@ -72,20 +70,18 @@ communicate_with_server(Host, Port, ServerMessage, Filepath, FileSize) ->
                         [binary, {packet, raw}, {active, false}]),
     gen_tcp:send(Socket, term_to_binary(ServerMessage)),
     {ok, Packet} = gen_tcp:recv(Socket, 0),
-    RV = handle_response_packet(Packet, Socket, Filepath, FileSize),
+    RV = handle_response_packet(binary_to_term(Packet), Socket, Filepath, FileSize),
     gen_tcp:close(Socket),
     RV.
 
 %% @doc Handle response and perform appropriate action
-handle_response_packet(Packet, Socket, Filepath, FileSize) ->
-   case binary_to_term(Packet) of
-        already_downloaded -> {ok, 0, FileSize};
-        {ok, ExistingSize} ->
-            {ok, Fd} = file:open(Filepath, [raw, binary, read]),
-            {ok, BytesSent} = file:sendfile(Fd, Socket, ExistingSize, 0, []),
-            file:close(Fd),
-            {ok, BytesSent, FileSize}
-    end.
+handle_response_packet(already_downloaded, _Socket, _Filepath, FileSize) ->
+    {ok, 0, FileSize};
+handle_response_packet({ok, ExistingSize}, Socket, Filepath, FileSize) ->
+    {ok, Fd} = file:open(Filepath, [raw, binary, read]),
+    {ok, BytesSent} = file:sendfile(Fd, Socket, ExistingSize, 0, []),
+    file:close(Fd),
+    {ok, BytesSent, FileSize}.
 
 %% Compute checksum
 checksum(Filepath) ->
