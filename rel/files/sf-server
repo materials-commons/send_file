@@ -1,0 +1,55 @@
+#!/bin/sh
+#
+# send_file Send file transfer service for Materials Commons
+#
+# chkconfig: - 80 05
+# description: send_file Send file transfer service for Materials Commons
+#
+
+### BEGIN INIT INFO
+# Provides:          rabbitmq-server
+# Required-Start:    $remote_fs $network
+# Required-Stop:     $remote_fs $network
+# Description:       File transfer service for Materials Commons
+# Short-Description: send_file Send file transfer service for Materials Commons
+### END INIT INFO
+
+if [ -f /etc/init.d/sf.rc ]; then
+    . /etc/init.d/sf.rc
+fi
+
+NAME="sf-server"
+RETVAL=0
+
+set +e
+
+case "$1" in
+    start)
+        echo -n "Starting $NAME:"
+        send_file start
+        EXITCODE=$?
+        echo "Started."
+        ;;
+    stop)
+        echo -n "Stopping $NAME: "
+        send_file stop
+        echo "Stopped."
+        ;;
+    status)
+        send_file ping
+        ;;
+    restart)
+        echo -n "Restarting $NAME: "
+        send_file stop > /dev/null 2>&1
+        send_file start
+        EXITCODE=$?
+        echo "Restarted."
+        ;;
+    *)
+        echo "Usage: $0 {start, stop, status, restart}" >&2
+        EXITCODE=1
+        ;;
+esac
+
+exit $EXITCODE
+
