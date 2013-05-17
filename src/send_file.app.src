@@ -1,6 +1,6 @@
 {application, send_file,
   [{description, "Server for transfering files"},
-   {vsn, "v0.1"},
+   {vsn, "v0.2"},
    {modules, [sf_app, send_file, sf_server, sf_sup]},
    {registered, [sf_sup]},
    {applications, [kernel, stdlib, crypto, handyman]},
