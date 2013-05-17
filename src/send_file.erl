@@ -49,9 +49,13 @@ send_file(Host, Port, Filepath, {directory, _Directory} = Destination) ->
 
 %% Sends a file to the server. Handles previous partial attempts.
 do_send_file(Host, Port, Filepath, Destination) ->
-    {ok, FileSize, Checksum, Basename} = get_file_attributes(Filepath),
-    ServerMessage = construct_message_to_server(Basename, Checksum, Destination, FileSize),
-    communicate_with_server(Host, Port, ServerMessage, Filepath, FileSize).
+    try
+        {ok, FileSize, Checksum, Basename} = get_file_attributes(Filepath),
+        ServerMessage = construct_message_to_server(Basename, Checksum, Destination, FileSize),
+        communicate_with_server(Host, Port, ServerMessage, Filepath, FileSize)
+    catch
+        _Exception:Reason -> map_error_return(Reason)
+    end.
 
 %% Get the attributes we need, including computed attributes such as checksum
 get_file_attributes(Filepath) ->
@@ -90,3 +94,11 @@ checksum(Filepath) ->
 %% Handles creating a return value (rv) from checksums:md5sum()
 checksum_rv({error, _Reason}) -> error;
 checksum_rv(Checksum) -> {ok, Checksum}.
+
+%% Map error to a return value
+map_error_return({badmatch, {error, econnrefused} = Error}) -> Error;
+map_error_return({badmatch, {error, nxdomain}}) -> {error, unknown_host};
+map_error_return({badmatch, {error, enoent} = Error}) -> Error;
+map_error_return(Reason) ->
+    io:format("~p~n", [Reason]), %% Switch to error logging.
+    {error, unknown}.

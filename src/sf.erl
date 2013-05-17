@@ -68,5 +68,23 @@ options(Values, Files) ->
 send_files(_Host, _Port, _Directory, []) -> ok;
 send_files(Host, Port, Directory, [File|RemainingFiles]) ->
     io:format("Sending file ~s to host ~s:~p directory ~s~n", [File, Host, Port, Directory]),
-    send_file:send_file(Host, Port, File, {directory, Directory}),
-    send_files(Host, Port, Directory, RemainingFiles).
+    case success(send_file:send_file(Host, Port, File,
+            {directory, Directory}), Host, File) of
+        unrecoverable -> ok;
+        _ -> send_files(Host, Port, Directory, RemainingFiles)
+    end.
+
+success({ok, _BytesSent, _FileSize}, _Host, _File) -> ok;
+success({error, econnrefused}, Host, _File) ->
+    error_message("Unable to connect to host: " ++ Host),
+    unrecoverable;
+success({error, unknown_host}, Host, _File) ->
+    error_message("Unknown host: " ++ Host),
+    unrecoverable;
+success({error, enoent}, _Host, File) -> error_message("File is not readable or does not exist: " ++ File);
+success(_Error, _Host, _File) ->
+    error_message("An unknown error occurred"),
+    unrecoverable.
+
+error_message(Message) ->
+    io:format(standard_error, "  Transfer failed - ~s.~n", [Message]).
