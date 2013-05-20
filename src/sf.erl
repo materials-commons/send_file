@@ -68,22 +68,20 @@ options(Values, Files) ->
 send_files(_Host, _Port, _Directory, []) -> ok;
 send_files(Host, Port, Directory, [File|RemainingFiles]) ->
     io:format("Sending file ~s to host ~s:~p directory ~s~n", [File, Host, Port, Directory]),
-    case success(send_file:send_file(Host, Port, File,
-            {directory, Directory}), Host, File) of
+    Status = send_file:send_file(Host, Port, File, {directory, Directory}),
+    case success(Status, Host, File) of
         unrecoverable -> ok;
         _ -> send_files(Host, Port, Directory, RemainingFiles)
     end.
 
 success({ok, _BytesSent, _FileSize}, _Host, _File) -> ok;
-success({error, econnrefused}, Host, _File) ->
-    error_message("Unable to connect to host: " ++ Host),
-    unrecoverable;
-success({error, unknown_host}, Host, _File) ->
-    error_message("Unknown host: " ++ Host),
-    unrecoverable;
+success({error, econnrefused}, Host, _File) -> not_recoverable("Unable to connect to host: " ++ Host);
+success({error, unknown_host}, Host, _File) -> not_recoverable("Unknown host: " ++ Host);
 success({error, enoent}, _Host, File) -> error_message("File is not readable or does not exist: " ++ File);
-success(_Error, _Host, _File) ->
-    error_message("An unknown error occurred"),
+success(_Error, _Host, _File) -> not_recoverable("An unknown error occurred").
+
+not_recoverable(Message) ->
+    error_message(Message),
     unrecoverable.
 
 error_message(Message) ->
