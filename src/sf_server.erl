@@ -61,28 +61,34 @@ handle_call(_Request, _From, State) ->
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
-handle_info({tcp, Socket, Request}, #state{fd = Fd} = State) when Fd =:= not_set ->
-    {ok, Filename, Destination, Size, Checksum} = splitout_request_data(Request),
-    Filepath = construct_file_path(Destination, Filename),
-    DownloadedSize = get_file_size(Filepath),
-    case size_and_checksum_match(Filepath, Size, DownloadedSize, Checksum) of
-        true ->
-            send_already_downloaded(Socket),
-            {stop, normal, State};
-        false ->
-            NewState = proceed_with_download(Filepath, DownloadedSize, State, Socket),
-            {noreply, NewState}
-    end;
-handle_info({tcp, _Socket, RawData}, #state{fd = Fd} = State) ->
+handle_info({ssl, _Socket, _Request}, #state{fd = Fd} = State) when Fd =:= not_set ->
+    io:format("ssl fd not set~n"),
+    {noreply, State};
+handle_info({ssl, _Socket, RawData}, #state{fd = Fd} = State) ->
+    io:format("Writing data to file~n"),
     ok = file:write(Fd, RawData),
     {noreply, State};
 handle_info(timeout, #state{lsocket = LSocket} = State) ->
-    {ok, _Socket} = gen_tcp:accept(LSocket),
+    io:format("handle_info timeout~n"),
+    {ok, Socket} = gen_tcp:accept(LSocket),
+    ok = inet:setopts(Socket, [{active, false}]),
+    {ok, SSLSocket} = ssl:ssl_accept(Socket,
+                        [{certfile, "/usr/local/etc/sf/cert/certificate.pem"},
+                         {keyfile, "/usr/local/etc/sf/cert/key.pem"}]),
+
     sf_sup:start_child(),
-    {noreply, State};
+    RV = setup(SSLSocket, State),
+    inet:setopts(Socket, [{active, true}]),
+    ok = ssl:setopts(SSLSocket, [{active, true}]),
+    RV;
 handle_info({tcp_closed, _Socket}, State) ->
     {stop, normal, State};
-handle_info(_Info, State) ->
+handle_info({ssl_closed, Socket}, State) ->
+    io:format("ssl_closed closing socket~n"),
+    ssl:close(Socket),
+    {stop, normal, State};
+handle_info(Info, State) ->
+    io:format("handle_info fallthrough Info ~p~n", [Info]),
     {noreply, State}.
 
 %% @private
@@ -100,12 +106,29 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
+setup(Socket, State) ->
+    {ok, Request} = handytcp:ssl_recv_all(Socket, {active, false}),
+    io:format("Request ~p~n", [Request]),
+    {ok, Filename, Destination, Size, Checksum} = splitout_request_data(Request),
+    Filepath = construct_file_path(Destination, Filename),
+    DownloadedSize = get_file_size(Filepath),
+    case size_and_checksum_match(Filepath, Size, DownloadedSize, Checksum) of
+        true ->
+            send_already_downloaded(Socket),
+            {stop, normal, State};
+        false ->
+            NewState = proceed_with_download(Filepath, DownloadedSize, State, Socket),
+            {noreply, NewState}
+    end.
+
 send_already_downloaded(Socket) ->
-    gen_tcp:send(Socket, term_to_binary(already_downloaded)).
+    io:format("send_already_downloaded ~p~n", [Socket]),
+    ssl:send(Socket, term_to_binary(already_downloaded)).
 
 proceed_with_download(Filepath, FileSize, State, Socket) ->
+    io:format("proceed_with_download Socket ~p~n", [Socket]),
     {ok, Fd} = open_file(Filepath, FileSize),
-    gen_tcp:send(Socket, term_to_binary({ok, FileSize})),
+    ssl:send(Socket, term_to_binary({ok, FileSize})),
     State#state{fd = Fd}.
 
 size_and_checksum_match(_Filepath, Size, DownloadedSize, _Checksum) when Size =/= DownloadedSize ->
@@ -126,6 +149,7 @@ get_file_size(Filename) ->
     end.
 
 splitout_request_data(RequestData) ->
+    io:format("splitout_request_data = ~p~n", [binary_to_term(RequestData)]),
     [{_, Filename}, Destination, {_, Size}, {_, Checksum}] =
             binary_to_term(RequestData),
     {ok, Filename, Destination, Size, Checksum}.
@@ -136,3 +160,24 @@ construct_file_path({destination, Filepath}, _Filename) ->
     Filepath;
 construct_file_path({directory, Directory}, Filename) ->
     filename:join([Directory, Filename]).
+
+% ssl_recv_rest(Socket, Data, {active, true}) ->
+%     %ssl:setopts(Socket, [{active, false}]),
+%     AllData = ssl_recv_rest(Socket, Data),
+%     %ssl:setopts(Socket, [{active, true}]),
+%     AllData;
+% ssl_recv_rest(Socket, Data, {active, false}) ->
+%     ssl_recv_rest(Socket, Data).
+
+% ssl_recv_rest(Socket, AlreadyReceived) ->
+%     case ssl:recv(Socket, 0, 1000) of
+%         {ok, Data} ->
+%             io:format("Got data~p~n", [Data]),
+%             ssl_recv_rest(Socket, <<AlreadyReceived/binary, Data/binary>>);
+%         {error, timeout} ->
+%             io:format("{error, timeout}~n"),
+%             {ok, AlreadyReceived};
+%         _ ->
+%             io:format("error~n"),
+%             error
+%     end.

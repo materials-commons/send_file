@@ -3,6 +3,6 @@
    {vsn, "0.2.0"},
    {modules, [sf_app, send_file, sf_server, sf_sup]},
    {registered, [sf_sup]},
-   {applications, [kernel, stdlib, crypto, handyman]},
+   {applications, [kernel, stdlib, crypto, public_key, ssl, handyman]},
    {mod, {sf_app, []}}
   ]}.

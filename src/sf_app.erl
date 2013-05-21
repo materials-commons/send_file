@@ -38,6 +38,8 @@
 %% @doc Short cut to start application. Handles starting dependencies.
 start() ->
     application:start(crypto),
+    application:start(public_key),
+    application:start(ssl),
     application:start(handyman),
     application:start(send_file).
 
@@ -46,6 +48,7 @@ start() ->
 %%%===================================================================
 
 start(_StartType, _StartArgs) ->
+    ssl:start(),
     Port = get_port(),
     {ok, LSocket} = gen_tcp:listen(Port, [binary, {packet, raw},
                         {active, true}, {reuseaddr, true}]),

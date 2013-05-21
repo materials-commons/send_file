@@ -18,9 +18,9 @@ generate:
 cli: compile
 	./rebar escriptize
 
-rel: rel-config deps compile generate cli
+rel: rel-config deps compile cli generate
 
-devrel: devl-rel-config deps compile generate cli
+devrel: devl-rel-config deps compile cli generate
 
 rel-config:
 	cp rel/files/app.config.rel rel/files/app.config

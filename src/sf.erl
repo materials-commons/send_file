@@ -36,6 +36,8 @@
 %%%===================================================================
 main([]) -> usage();
 main(Args) ->
+    RV = ssl:start(),
+    io:format("ssl:start RV = ~p~n", [RV]),
     {Host, Port, Directory, Files} = parse_results(getopt:parse(?OPTSPEC, Args)),
     send_files(Host, Port, Directory, Files).
 

@@ -49,13 +49,16 @@ send_file(Host, Port, Filepath, {directory, _Directory} = Destination) ->
 
 %% Sends a file to the server. Handles previous partial attempts.
 do_send_file(Host, Port, Filepath, Destination) ->
-    try
+    io:format("do_send_file~n"),
+    % try
         {ok, FileSize, Checksum, Basename} = get_file_attributes(Filepath),
         ServerMessage = construct_message_to_server(Basename, Checksum, Destination, FileSize),
-        communicate_with_server(Host, Port, ServerMessage, Filepath, FileSize)
-    catch
-        _Exception:Reason -> map_error_return(Reason)
-    end.
+        communicate_with_server(Host, Port, ServerMessage, Filepath, FileSize).
+    % catch
+    %     Exception:Reason ->
+    %         io:format("~p:~p~n", [Exception, Reason]),
+    %         map_error_return(Reason)
+    % end.
 
 %% Get the attributes we need, including computed attributes such as checksum
 get_file_attributes(Filepath) ->
@@ -70,12 +73,20 @@ construct_message_to_server(Basename, Checksum, Destination, FileSize) ->
 
 %% Open socket to server and send/receive messages.
 communicate_with_server(Host, Port, ServerMessage, Filepath, FileSize) ->
+    io:format("communicate_with_server~n"),
     {ok, Socket} = gen_tcp:connect(Host, Port,
-                        [binary, {packet, raw}, {active, false}]),
-    gen_tcp:send(Socket, term_to_binary(ServerMessage)),
-    {ok, Packet} = gen_tcp:recv(Socket, 0),
-    RV = handle_response_packet(binary_to_term(Packet), Socket, Filepath, FileSize),
-    gen_tcp:close(Socket),
+                        [binary, {packet, raw}, {active, false}], infinity),
+    {ok, SSLSocket} = ssl:connect(Socket, [binary, {packet, raw},
+                                            {certfile, "/usr/local/etc/sf/cert/certificate.pem"},
+                                            {keyfile, "/usr/local/etc/sf/cert/key.pem"}], infinity),
+    %gen_tcp:send(Socket, term_to_binary(ServerMessage)),
+    ssl:send(SSLSocket, term_to_binary(ServerMessage)),
+    %{ok, Packet} = gen_tcp:recv(Socket, 0),
+    {ok, Packet} = handytcp:ssl_recv_all(SSLSocket, {active, false}),
+    io:format("Packet = ~p~n", [binary_to_term(Packet)]),
+    RV = handle_response_packet(binary_to_term(Packet), SSLSocket, Filepath, FileSize),
+    %gen_tcp:close(Socket),
+    ssl:close(SSLSocket),
     RV.
 
 %% @doc Handle response and perform appropriate action
