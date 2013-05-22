@@ -50,7 +50,7 @@ start() ->
 start(_StartType, _StartArgs) ->
     ssl:start(),
     Port = get_port(),
-    {ok, LSocket} = gen_tcp:listen(Port, [binary, {packet, raw},
+    {ok, LSocket} = gen_tcp:listen(Port, [binary, {packet, 4},
                         {active, true}, {reuseaddr, true}]),
     case sf_sup:start_link(LSocket) of
         {ok, Pid} ->

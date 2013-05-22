@@ -1,0 +1,1 @@
+-define(BUF_SIZE, 20000*1024). % 20 MB

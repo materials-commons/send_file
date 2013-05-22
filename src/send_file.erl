@@ -21,6 +21,7 @@
 
 -module(send_file).
 
+-include("sf.hrl").
 -include_lib("kernel/include/file.hrl").
 
 %% API
@@ -49,16 +50,15 @@ send_file(Host, Port, Filepath, {directory, _Directory} = Destination) ->
 
 %% Sends a file to the server. Handles previous partial attempts.
 do_send_file(Host, Port, Filepath, Destination) ->
-    io:format("do_send_file~n"),
-    % try
+    try
         {ok, FileSize, Checksum, Basename} = get_file_attributes(Filepath),
         ServerMessage = construct_message_to_server(Basename, Checksum, Destination, FileSize),
-        communicate_with_server(Host, Port, ServerMessage, Filepath, FileSize).
-    % catch
-    %     Exception:Reason ->
-    %         io:format("~p:~p~n", [Exception, Reason]),
-    %         map_error_return(Reason)
-    % end.
+        communicate_with_server(Host, Port, ServerMessage, Filepath, FileSize)
+    catch
+        Exception:Reason ->
+            %io:format("~p:~p~n", [Exception, Reason]),
+            map_error_return(Reason)
+    end.
 
 %% Get the attributes we need, including computed attributes such as checksum
 get_file_attributes(Filepath) ->
@@ -73,19 +73,13 @@ construct_message_to_server(Basename, Checksum, Destination, FileSize) ->
 
 %% Open socket to server and send/receive messages.
 communicate_with_server(Host, Port, ServerMessage, Filepath, FileSize) ->
-    io:format("communicate_with_server~n"),
     {ok, Socket} = gen_tcp:connect(Host, Port,
-                        [binary, {packet, raw}, {active, false}], infinity),
-    {ok, SSLSocket} = ssl:connect(Socket, [binary, {packet, raw},
-                                            {certfile, "/usr/local/etc/sf/cert/certificate.pem"},
+                        [binary, {packet, 4}, {active, false}], infinity),
+    {ok, SSLSocket} = ssl:connect(Socket, [{certfile, "/usr/local/etc/sf/cert/certificate.pem"},
                                             {keyfile, "/usr/local/etc/sf/cert/key.pem"}], infinity),
-    %gen_tcp:send(Socket, term_to_binary(ServerMessage)),
     ssl:send(SSLSocket, term_to_binary(ServerMessage)),
-    %{ok, Packet} = gen_tcp:recv(Socket, 0),
-    {ok, Packet} = handytcp:ssl_recv_all(SSLSocket, {active, false}),
-    io:format("Packet = ~p~n", [binary_to_term(Packet)]),
+    {ok, Packet} = ssl:recv(SSLSocket, 0),
     RV = handle_response_packet(binary_to_term(Packet), SSLSocket, Filepath, FileSize),
-    %gen_tcp:close(Socket),
     ssl:close(SSLSocket),
     RV.
 
@@ -94,9 +88,12 @@ handle_response_packet(already_downloaded, _Socket, _Filepath, FileSize) ->
     {ok, 0, FileSize};
 handle_response_packet({ok, ExistingSize}, Socket, Filepath, FileSize) ->
     {ok, Fd} = file:open(Filepath, [raw, binary, read]),
-    {ok, BytesSent} = file:sendfile(Fd, Socket, ExistingSize, 0, []),
+    {ok, BytesSent} = sendfile(Fd, Socket, ExistingSize, []),
     file:close(Fd),
-    {ok, BytesSent, FileSize}.
+    {ok, BytesSent, FileSize};
+handle_response_packet({error, eacces} = Error, _Socket, _Filepath, _FileSize) -> throw(Error);
+handle_response_packet({error, other} = Error, _Socket, _Filepath, _FileSize) -> throw(Error);
+handle_response_packet(Error, _Socket, _Filepath, _FileSize) -> throw(Error).
 
 %% Compute checksum
 checksum(Filepath) ->
@@ -110,6 +107,23 @@ checksum_rv(Checksum) -> {ok, Checksum}.
 map_error_return({badmatch, {error, econnrefused} = Error}) -> Error;
 map_error_return({badmatch, {error, nxdomain}}) -> {error, unknown_host};
 map_error_return({badmatch, {error, enoent} = Error}) -> Error;
+map_error_return({error, eacces} = Error) -> Error;
+map_error_return({error, other} = Error) -> Error;
 map_error_return(Reason) ->
     io:format("~p~n", [Reason]), %% Switch to error logging.
     {error, unknown}.
+
+sendfile(Fd, Socket, BytesOffset, _Options) ->
+    file:position(Fd, {bof, BytesOffset}),
+    send_file_contents(Fd, Socket, 0).
+
+send_file_contents(Fd, Socket, AmountSent) ->
+    case file:read(Fd, ?BUF_SIZE) of
+        {ok, Data} ->
+            ssl:send(Socket, Data),
+            NewAmount = byte_size(Data) + AmountSent,
+            send_file_contents(Fd, Socket, NewAmount);
+        eof -> {ok, AmountSent};
+        ebadf -> {error, ebadf};
+        {error, Reason} -> {error, Reason}
+    end.

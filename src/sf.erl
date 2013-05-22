@@ -37,7 +37,6 @@
 main([]) -> usage();
 main(Args) ->
     RV = ssl:start(),
-    io:format("ssl:start RV = ~p~n", [RV]),
     {Host, Port, Directory, Files} = parse_results(getopt:parse(?OPTSPEC, Args)),
     send_files(Host, Port, Directory, Files).
 
@@ -71,16 +70,20 @@ send_files(_Host, _Port, _Directory, []) -> ok;
 send_files(Host, Port, Directory, [File|RemainingFiles]) ->
     io:format("Sending file ~s to host ~s:~p directory ~s~n", [File, Host, Port, Directory]),
     Status = send_file:send_file(Host, Port, File, {directory, Directory}),
-    case success(Status, Host, File) of
+    case success(Status, Host, File, Directory) of
         unrecoverable -> ok;
         _ -> send_files(Host, Port, Directory, RemainingFiles)
     end.
 
-success({ok, _BytesSent, _FileSize}, _Host, _File) -> ok;
-success({error, econnrefused}, Host, _File) -> not_recoverable("Unable to connect to host: " ++ Host);
-success({error, unknown_host}, Host, _File) -> not_recoverable("Unknown host: " ++ Host);
-success({error, enoent}, _Host, File) -> error_message("File is not readable or does not exist: " ++ File);
-success(_Error, _Host, _File) -> not_recoverable("An unknown error occurred").
+success({ok, _BytesSent, _FileSize}, _Host, _File, _Dir) -> ok;
+success({error, econnrefused}, Host, _File, _Dir) ->
+    not_recoverable("Unable to connect to host: " ++ Host);
+success({error, unknown_host}, Host, _File, _Dir) -> not_recoverable("Unknown host: " ++ Host);
+success({error, enoent}, _Host, File, _Dir) ->
+    error_message("File is not readable or does not exist: '" ++ File ++ "'");
+success({error, eacces}, _Host, File, Dir) ->
+    error_message("Unable to write to destination '" ++ filename:join([Dir, File]) ++"' on remote host");
+success(_Error, _Host, _File, _Dir) -> not_recoverable("An unknown error occurred").
 
 not_recoverable(Message) ->
     error_message(Message),
