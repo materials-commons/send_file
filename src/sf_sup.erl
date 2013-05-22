@@ -23,7 +23,7 @@
 -behaviour(supervisor).
 
 %% API
--export([start_link/1, start_child/0]).
+-export([start_link/3, start_child/0]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -37,8 +37,8 @@
 %%%===================================================================
 
 %% @doc Starts the supervisor
-start_link(LSocket) ->
-    supervisor:start_link({local, ?SERVER}, ?MODULE, [LSocket]).
+start_link(LSocket, AllowedUsers, CertDir) ->
+    supervisor:start_link({local, ?SERVER}, ?MODULE, [LSocket, AllowedUsers, CertDir]).
 
 %% @doc start a new child.
 start_child() ->
@@ -50,7 +50,7 @@ start_child() ->
 
 %% @private
 %% @doc Initialize supervisor
-init([LSocket]) ->
-    SfServer = ?CHILD(sf_server, [LSocket]),
+init([LSocket, AllowedUsers, CertDir]) ->
+    SfServer = ?CHILD(sf_server, [LSocket, AllowedUsers, CertDir]),
     {ok, { {simple_one_for_one, 0, 1}, [SfServer] } }.
 

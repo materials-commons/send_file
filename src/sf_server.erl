@@ -25,7 +25,7 @@
 -include_lib("kernel/include/file.hrl").
 
 %% API
--export([start_link/1]).
+-export([start_link/3]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -34,16 +34,22 @@
 -define(SERVER, ?MODULE).
 -define(BASE_PATH, "/tmp").
 
--record(state, {lsocket, fd}).
+-record(state,
+        {
+            lsocket,
+            allowed_users,
+            certdir,
+            fd
+        }).
 
 %%%===================================================================
 %%% API
 %%%===================================================================
 
 %% @doc Starts the server
--spec start_link(port()) -> {ok, pid()} | ignore | {error, string()}.
-start_link(LSocket) ->
-    gen_server:start_link(?MODULE, [LSocket], []).
+-spec start_link(port(), string() | atom(), string()) -> {ok, pid()} | ignore | {error, string()}.
+start_link(LSocket, AllowedUsers, CertDir) ->
+    gen_server:start_link(?MODULE, [LSocket, AllowedUsers, CertDir], []).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -51,8 +57,14 @@ start_link(LSocket) ->
 
 
 %% @doc Initialize state. Most setup work is done in handle_info timeout.
-init([LSocket]) ->
-    {ok, #state{lsocket = LSocket, fd = not_set}, 0}.
+init([LSocket, AllowedUsers, CertDir]) ->
+    {ok, #state
+            {
+                lsocket = LSocket,
+                allowed_users = AllowedUsers,
+                certdir = CertDir,
+                fd = not_set
+            }, 0}.
 
 handle_call(_Request, _From, State) ->
     Reply = ok,

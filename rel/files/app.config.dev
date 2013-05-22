@@ -11,7 +11,9 @@
     },
     {send_file,
         [
-            {port, 1055} % Port to connect to/listen on.
+            %{allowed_users, "/usr/local/etc/sf/allowed_users"}
+            {port, 1055}, % Port to connect to/listen on.
+            {certdir, "/usr/local/etc/sf/cert"}
         ]
     }
 ].

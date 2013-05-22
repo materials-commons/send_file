@@ -28,6 +28,8 @@
             {host, $h, "host", {string, "materialscommons.org"},   "Host to send files to."},
             {port, $p, "port", {integer, 1055},         "Port to connect to."},
             {dir,  $d, "dir",  {string, "/tmp"},        "Directory to put files in."},
+            {user, $u, "user", {string, username()}, "Username to login as"},
+            {password, $p, "password", string, "Password to use"},
             {help, $?, "help", undefined,               "Show usage."}
         ]).
 
@@ -36,7 +38,7 @@
 %%%===================================================================
 main([]) -> usage();
 main(Args) ->
-    RV = ssl:start(),
+    ssl:start(),
     {Host, Port, Directory, Files} = parse_results(getopt:parse(?OPTSPEC, Args)),
     send_files(Host, Port, Directory, Files).
 
@@ -91,3 +93,12 @@ not_recoverable(Message) ->
 
 error_message(Message) ->
     io:format(standard_error, "  Transfer failed - ~s.~n", [Message]).
+
+username() ->
+    username(os:type()).
+
+username({unix, _Os}) ->
+    os:getenv("USER");
+username({win32, _Os}) ->
+    throw(notimplemented).
+
