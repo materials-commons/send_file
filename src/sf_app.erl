@@ -68,7 +68,7 @@ get_cert_dir() ->
     try
         validate_cert_files(application:get_env(send_file, certdir))
     catch
-        Exception:Reason -> {error, enoent}
+        _Exception:_Reason -> {error, enoent}
     end.
 
 validate_cert_files({ok, Dir}) ->
@@ -87,10 +87,10 @@ file_exists(FilePath) ->
             error(enoent)
     end.
 
-startup(Port, _Allowed, _CertDir) ->
+startup(Port, Allowed, CertDir) ->
     {ok, LSocket} = gen_tcp:listen(Port, [binary, {packet, 4},
                         {active, true}, {reuseaddr, true}]),
-    case sf_sup:start_link(LSocket) of
+    case sf_sup:start_link(LSocket, Allowed, CertDir) of
         {ok, Pid} ->
             sf_sup:start_child(),
             {ok, Pid};
