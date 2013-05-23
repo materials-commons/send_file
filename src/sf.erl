@@ -102,3 +102,8 @@ username({unix, _Os}) ->
 username({win32, _Os}) ->
     throw(notimplemented).
 
+get_password() ->
+    Password = io:get_line("Password:"),
+    [TrimmedPassword, _] = re:replace(Password, "\n$", "", [global]),
+    TrimmedPassword.
+
