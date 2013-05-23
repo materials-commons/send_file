@@ -17,6 +17,7 @@ generate:
 
 cli: compile
 	./rebar escriptize
+	./rebar -C rebar.config.sfpw escriptize
 
 rel: rel-config deps compile cli generate
 
