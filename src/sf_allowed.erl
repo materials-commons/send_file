@@ -70,10 +70,20 @@ access_allowed(Username, Directory, #allowed{users = Users}) ->
 %%% Local
 %%%===================================================================
 
-new_access_control({_Username, Directories, PwHash}) ->
-    #access_control{directories = Directories, pw_hash = PwHash};
-new_access_control({_Username, Directories}) ->
-    #access_control{directories = Directories, pw_hash = []}.
+new_access_control({Username, Directories, PwHash}) ->
+    Dirs = convert_directories(Username, Directories),
+    #access_control{directories = Dirs, pw_hash = PwHash};
+new_access_control({Username, Directories}) ->
+    Dirs = convert_directories(Username, Directories),
+    #access_control{directories = Dirs, pw_hash = []}.
+
+convert_directories(Username, Directories) ->
+   lists:map(
+    fun (home) ->
+            handyuser:user_home(Username);
+        (tmp) -> "/tmp";
+        (Dir) -> Dir
+    end, Directories).
 
 get_user_pw_hash(Username, #allowed{users = Users}) when Users =:= all ->
     pw_hash_from_user_home(Username);
@@ -102,4 +112,10 @@ check_access(Username, Dir, Directories) ->
                 end;
             (_Dir, true) -> true
         end, false, Directories).
+
+tmpdir() ->
+    tmpdir(os:type).
+
+tmpdir({unix, _Os}) -> "/tmp";
+tmpdir({win32, _Os}) -> "c:/tmp". % Find out what this should be.
 
